@@ -1,49 +1,69 @@
-const templates = [
-    {
-        id: 1,
-        title: "Police Cruiser (LSPD)",
-        description: "Template complet avec mapping des portes, toit et coffre. Résolution 4K.",
-        tags: ["police", "lspd", "cruiser"]
-    },
-    {
-        id: 2,
-        title: "Ambulance EMS",
-        description: "Modèle fourgon ambulance, idéal pour créer des livrées hôpital réalistes.",
-        tags: ["ems", "ambulance", "hopital"]
-    },
-    {
-        id: 3,
-        title: "Audi RS6 (Banalisée)",
-        description: "Template pour Audi RS6, parfait pour les unités d'intervention rapide ou banalisées.",
-        tags: ["audi", "rs6", "banalise", "rapide"]
-    },
-    {
-        id: 4,
-        title: "Camion de Pompier",
-        description: "Texture haute résolution pour le camion de pompier standard (Firetruck).",
-        tags: ["pompier", "fire", "truck"]
-    },
-    {
-        id: 5,
-        title: "Hélicoptère de Police",
-        description: "Template pour le Maverick de la police (Polmav).",
-        tags: ["police", "helico", "polmav", "lspd"]
-    },
-    {
-        id: 6,
-        title: "Dépanneuse (Towtruck)",
-        description: "Template pour dépanneuse flatbed, avec zones personnalisables pour le logo de l'entreprise.",
-        tags: ["mécano", "depanneuse", "towtruck", "entreprise"]
-    }
-];
+const repoOwner = 'sadoj-kuro';
+const repoName = 'fivem-vehicle-templates';
+const folderPath = 'templates'; // Le dossier où tu vas glisser tes fichiers
 
 const grid = document.getElementById('templatesGrid');
 const searchInput = document.getElementById('searchInput');
 
+let templatesData = [];
+
+async function fetchTemplates() {
+    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary);">Chargement des templates depuis GitHub...</p>';
+    
+    try {
+        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}`);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                 grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary);">Le dossier <strong>${folderPath}</strong> est vide ou n'existe pas encore sur GitHub.</p>`;
+                 return;
+            }
+            throw new Error('Erreur réseau de l\'API GitHub');
+        }
+        
+        const files = await response.json();
+        
+        // On regroupe les fichiers par nom de base (ex: "police.zip" et "police.png" deviennent le même véhicule "police")
+        const baseNames = new Set();
+        files.forEach(file => {
+            if(file.type === 'file' && file.name !== '.gitkeep') {
+                const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                baseNames.add(nameWithoutExt);
+            }
+        });
+
+        templatesData = Array.from(baseNames).map((baseName, index) => {
+            // On cherche l'archive (zip, rar, 7z)
+            const archive = files.find(f => f.name.startsWith(baseName + '.') && (f.name.endsWith('.zip') || f.name.endsWith('.rar') || f.name.endsWith('.7z') || f.name.endsWith('.ytd')));
+            
+            // On cherche l'image (png, jpg, jpeg)
+            const image = files.find(f => f.name.startsWith(baseName + '.') && (f.name.endsWith('.png') || f.name.endsWith('.jpg') || f.name.endsWith('.jpeg')));
+            
+            // On formate le titre (ex: "police_lspd" -> "Police Lspd")
+            const title = baseName.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+            return {
+                id: index,
+                title: title,
+                downloadUrl: archive ? archive.download_url : null,
+                imageUrl: image ? image.download_url : null,
+                fileName: archive ? archive.name : baseName,
+                tags: baseName.toLowerCase().split(/[-_]/)
+            };
+        });
+
+        renderTemplates();
+
+    } catch (error) {
+        console.error(error);
+        grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #ef4444;">Erreur lors de la récupération des fichiers. Vérifiez la limite d\'API GitHub ou votre connexion.</p>';
+    }
+}
+
 function renderTemplates(filter = "") {
     grid.innerHTML = "";
     
-    const filteredTemplates = templates.filter(t => 
+    const filteredTemplates = templatesData.filter(t => 
         t.title.toLowerCase().includes(filter.toLowerCase()) || 
         t.tags.some(tag => tag.toLowerCase().includes(filter.toLowerCase()))
     );
@@ -57,19 +77,29 @@ function renderTemplates(filter = "") {
         const card = document.createElement('div');
         card.className = 'template-card';
         
+        let imageHtml = `<div class="card-image-placeholder">Aucune image</div>`;
+        if (t.imageUrl) {
+            imageHtml = `<img src="${t.imageUrl}" alt="${t.title}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem;">`;
+        }
+
+        let downloadBtn = `<p style="color: var(--text-secondary); text-align: center; font-size: 0.9rem; margin-top: auto;">Fichier 3D/Texture manquant</p>`;
+        if (t.downloadUrl) {
+            downloadBtn = `<a href="${t.downloadUrl}" class="download-btn" target="_blank">Télécharger</a>`;
+        }
+        
         card.innerHTML = `
-            <div class="card-image-placeholder">Image du véhicule</div>
+            ${imageHtml}
             <h2>${t.title}</h2>
-            <p>${t.description}</p>
-            <a href="#" class="download-btn" onclick="alert('Bientôt disponible !')">Télécharger</a>
+            <p style="margin-bottom: 1rem;">Fichier : <code>${t.fileName}</code></p>
+            ${downloadBtn}
         `;
         
         grid.appendChild(card);
     });
 }
 
-// Initial render
-renderTemplates();
+// Initialisation
+fetchTemplates();
 
 // Search listener
 searchInput.addEventListener('input', (e) => {
