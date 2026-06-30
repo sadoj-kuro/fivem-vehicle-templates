@@ -53,6 +53,9 @@ async function fetchTemplates() {
             };
         });
 
+        // Tri alphabétique des templates
+        templatesData.sort((a, b) => a.title.localeCompare(b.title));
+
         renderTemplates();
 
     } catch (error) {
