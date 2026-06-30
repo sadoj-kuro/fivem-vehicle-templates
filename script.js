@@ -11,43 +11,44 @@ async function fetchTemplates() {
     grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary);">Chargement des templates depuis GitHub...</p>';
     
     try {
-        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}`);
+        // Utilisation de l'API Git Trees pour récupérer tous les fichiers (même dans les sous-dossiers) en 1 seule requête !
+        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/git/trees/main?recursive=1`);
         
         if (!response.ok) {
-            if (response.status === 404) {
-                 grid.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary);">Le dossier <strong>${folderPath}</strong> est vide ou n'existe pas encore sur GitHub.</p>`;
-                 return;
-            }
             throw new Error('Erreur réseau de l\'API GitHub');
         }
         
-        const files = await response.json();
+        const data = await response.json();
+        
+        // On filtre pour ne garder que les fichiers dans le dossier "templates"
+        const files = data.tree.filter(item => item.type === 'blob' && item.path.startsWith(folderPath + '/') && !item.path.endsWith('.gitkeep'));
         
         // On regroupe les fichiers par nom de base (ex: "police.zip" et "police.png" deviennent le même véhicule "police")
         const baseNames = new Set();
         files.forEach(file => {
-            if(file.type === 'file' && file.name !== '.gitkeep') {
-                const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                baseNames.add(nameWithoutExt);
-            }
+            const fileName = file.path.split('/').pop(); // Récupère juste le nom du fichier à la fin du chemin
+            const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+            baseNames.add(nameWithoutExt);
         });
 
         templatesData = Array.from(baseNames).map((baseName, index) => {
-            // On cherche l'archive (zip, rar, 7z)
-            const archive = files.find(f => f.name.startsWith(baseName + '.') && (f.name.endsWith('.zip') || f.name.endsWith('.rar') || f.name.endsWith('.7z') || f.name.endsWith('.ytd')));
-            
-            // On cherche l'image (png, jpg, jpeg)
-            const image = files.find(f => f.name.startsWith(baseName + '.') && (f.name.endsWith('.png') || f.name.endsWith('.jpg') || f.name.endsWith('.jpeg')));
+            // Fonction pour générer le lien de téléchargement direct
+            const getRawUrl = (filePath) => `https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/${filePath}`;
+
+            // On cherche l'archive et l'image (en vérifiant la fin du nom de fichier)
+            const archive = files.find(f => f.path.split('/').pop().startsWith(baseName + '.') && (f.path.endsWith('.zip') || f.path.endsWith('.rar') || f.path.endsWith('.7z') || f.path.endsWith('.ytd') || f.path.endsWith('.dds')));
+            const image = files.find(f => f.path.split('/').pop().startsWith(baseName + '.') && (f.path.endsWith('.png') || f.path.endsWith('.jpg') || f.path.endsWith('.jpeg')));
             
             // On formate le titre (ex: "police_lspd" -> "Police Lspd")
             const title = baseName.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const fileName = archive ? archive.path.split('/').pop() : baseName;
 
             return {
                 id: index,
                 title: title,
-                downloadUrl: archive ? archive.download_url : null,
-                imageUrl: image ? image.download_url : null,
-                fileName: archive ? archive.name : baseName,
+                downloadUrl: archive ? getRawUrl(archive.path) : null,
+                imageUrl: image ? getRawUrl(image.path) : null,
+                fileName: fileName,
                 tags: baseName.toLowerCase().split(/[-_]/)
             };
         });
