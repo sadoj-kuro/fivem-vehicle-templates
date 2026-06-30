@@ -1,0 +1,48 @@
+name: Check Template Filenames
+
+on:
+  pull_request:
+    paths:
+      - 'templates/**'
+
+jobs:
+  check-filenames:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate filenames
+        run: |
+          # Obtenir la liste des fichiers templates modifiés ou ajoutés dans cette PR
+          FILES=$(git diff --name-only origin/${{ github.base_ref }} HEAD | grep '^templates/') || true
+          
+          if [ -z "$FILES" ]; then
+            echo "Aucun fichier template ajouté ou modifié."
+            exit 0
+          fi
+          
+          ERRORS=0
+          for FILE in $FILES; do
+            BASENAME=$(basename "$FILE")
+            # Extraire juste le nom du fichier sans l'extension
+            FILENAME="${BASENAME%.*}"
+            
+            # RÈGLE : Seulement lettres minuscules, chiffres, et tirets bas (_)
+            # Pas d'espaces, pas de majuscules, pas de caractères spéciaux !
+            if ! [[ "$FILENAME" =~ ^[a-z0-9_]+$ ]]; then
+              echo "::error file=$FILE::❌ Erreur sur le fichier '$FILE'."
+              echo "::error file=$FILE::Le nom '$FILENAME' est invalide ! Il doit s'agir du nom de spawn exact."
+              echo "::error file=$FILE::Règles : Tout en minuscules, aucun espace, uniquement des lettres/chiffres/underscores."
+              ERRORS=1
+            else
+              echo "✅ Le fichier $FILE est valide."
+            fi
+          done
+          
+          if [ $ERRORS -ne 0 ]; then
+            echo "Une ou plusieurs erreurs de nommage ont été trouvées. Merci de renommer les fichiers correspondants."
+            exit 1
+          fi
