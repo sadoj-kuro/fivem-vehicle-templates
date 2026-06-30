@@ -46,7 +46,7 @@ async function fetchTemplates() {
             return {
                 id: index,
                 title: title,
-                downloadUrl: archive ? getRawUrl(archive.path) : null,
+                downloadUrl: archive ? getRawUrl(archive.path) : (image ? getRawUrl(image.path) : null),
                 imageUrl: image ? getRawUrl(image.path) : null,
                 fileName: fileName,
                 tags: baseName.toLowerCase().split(/[-_]/)
@@ -80,12 +80,12 @@ function renderTemplates(filter = "") {
         
         let imageHtml = `<div class="card-image-placeholder">Aucune image</div>`;
         if (t.imageUrl) {
-            imageHtml = `<img src="${t.imageUrl}" alt="${t.title}" style="width: 100%; height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem;">`;
+            imageHtml = `<img src="${t.imageUrl}" alt="${t.title}" style="width: 100%; height: 220px; object-fit: contain; background: rgba(0,0,0,0.2); border-radius: 12px; margin-bottom: 1.5rem; padding: 0.5rem;">`;
         }
 
-        let downloadBtn = `<p style="color: var(--text-secondary); text-align: center; font-size: 0.9rem; margin-top: auto;">Fichier 3D/Texture manquant</p>`;
+        let downloadBtn = `<p style="color: var(--text-secondary); text-align: center; font-size: 0.9rem; margin-top: auto;">Template manquant</p>`;
         if (t.downloadUrl) {
-            downloadBtn = `<a href="${t.downloadUrl}" class="download-btn" target="_blank">Télécharger</a>`;
+            downloadBtn = `<a href="${t.downloadUrl}" class="download-btn" target="_blank" download>Télécharger</a>`;
         }
         
         card.innerHTML = `
