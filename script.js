@@ -63,7 +63,7 @@ async function fetchTemplates() {
 
         // Mise à jour du compteur
         if(templateCounter) {
-            templateCounter.innerHTML = `<strong>${templatesData.length}</strong> templates disponibles pour ton serveur.`;
+            templateCounter.innerHTML = `<strong>${templatesData.length}</strong> templates disponibles.`;
         }
 
         renderTemplates();
