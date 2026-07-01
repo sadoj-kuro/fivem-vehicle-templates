@@ -4,8 +4,11 @@ const folderPath = 'templates'; // Le dossier où tu vas glisser tes fichiers
 
 const grid = document.getElementById('templatesGrid');
 const searchInput = document.getElementById('searchInput');
+const paginationContainer = document.getElementById('pagination');
 
 let templatesData = [];
+let currentPage = 1;
+const itemsPerPage = 12;
 
 async function fetchTemplates() {
     grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary);">Chargement des templates depuis GitHub...</p>';
@@ -66,6 +69,7 @@ async function fetchTemplates() {
 
 function renderTemplates(filter = "") {
     grid.innerHTML = "";
+    paginationContainer.innerHTML = "";
     
     const filteredTemplates = templatesData.filter(t => 
         t.title.toLowerCase().includes(filter.toLowerCase()) || 
@@ -77,7 +81,16 @@ function renderTemplates(filter = "") {
         return;
     }
 
-    filteredTemplates.forEach(t => {
+    // Calcul de la pagination
+    const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedTemplates = filteredTemplates.slice(startIndex, endIndex);
+
+    paginatedTemplates.forEach(t => {
         const card = document.createElement('div');
         card.className = 'template-card';
         
@@ -100,6 +113,64 @@ function renderTemplates(filter = "") {
         
         grid.appendChild(card);
     });
+
+    setupPagination(totalPages, filter);
+}
+
+function setupPagination(totalPages, filter) {
+    if (totalPages <= 1) return; // Pas besoin de pagination pour 1 seule page
+
+    const createBtn = (text, pageNum, disabled = false, active = false) => {
+        const btn = document.createElement('button');
+        btn.innerText = text;
+        btn.className = 'page-btn';
+        if (active) btn.classList.add('active');
+        if (disabled) {
+            btn.disabled = true;
+            btn.classList.add('disabled');
+        } else {
+            btn.addEventListener('click', () => {
+                currentPage = pageNum;
+                renderTemplates(filter);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+        return btn;
+    };
+
+    // Bouton Précédent
+    paginationContainer.appendChild(createBtn('«', currentPage - 1, currentPage === 1));
+
+    // Numéros de page (simplifiés pour ne pas afficher 20 boutons)
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    if (startPage > 1) {
+        paginationContainer.appendChild(createBtn('1', 1));
+        if (startPage > 2) {
+            const dots = document.createElement('span');
+            dots.innerText = '...';
+            dots.className = 'page-dots';
+            paginationContainer.appendChild(dots);
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        paginationContainer.appendChild(createBtn(i, i, false, i === currentPage));
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const dots = document.createElement('span');
+            dots.innerText = '...';
+            dots.className = 'page-dots';
+            paginationContainer.appendChild(dots);
+        }
+        paginationContainer.appendChild(createBtn(totalPages, totalPages));
+    }
+
+    // Bouton Suivant
+    paginationContainer.appendChild(createBtn('»', currentPage + 1, currentPage === totalPages));
 }
 
 // Initialisation
@@ -107,5 +178,6 @@ fetchTemplates();
 
 // Search listener
 searchInput.addEventListener('input', (e) => {
+    currentPage = 1; // Retour à la page 1 si on cherche
     renderTemplates(e.target.value);
 });
