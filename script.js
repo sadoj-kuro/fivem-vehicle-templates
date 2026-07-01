@@ -5,10 +5,12 @@ const folderPath = 'templates'; // Le dossier où tu vas glisser tes fichiers
 const grid = document.getElementById('templatesGrid');
 const searchInput = document.getElementById('searchInput');
 const paginationContainer = document.getElementById('pagination');
+const templateCounter = document.getElementById('templateCounter');
+const scrollTopBtn = document.getElementById('scrollTopBtn');
 
 let templatesData = [];
 let currentPage = 1;
-const itemsPerPage = 12;
+const itemsPerPage = 18;
 
 async function fetchTemplates() {
     grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--text-secondary);">Chargement des templates depuis GitHub...</p>';
@@ -58,6 +60,11 @@ async function fetchTemplates() {
 
         // Tri alphabétique des templates
         templatesData.sort((a, b) => a.title.localeCompare(b.title));
+
+        // Mise à jour du compteur
+        if(templateCounter) {
+            templateCounter.innerHTML = `<strong>${templatesData.length}</strong> templates disponibles pour ton serveur.`;
+        }
 
         renderTemplates();
 
@@ -180,4 +187,21 @@ fetchTemplates();
 searchInput.addEventListener('input', (e) => {
     currentPage = 1; // Retour à la page 1 si on cherche
     renderTemplates(e.target.value);
+});
+
+// Scroll to top listener
+window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+        scrollTopBtn.classList.add('visible');
+    } else {
+        scrollTopBtn.classList.add('visible');
+        scrollTopBtn.classList.remove('visible'); // Quick fix
+        if (window.scrollY <= 300) {
+            scrollTopBtn.classList.remove('visible');
+        }
+    }
+});
+
+scrollTopBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 });
