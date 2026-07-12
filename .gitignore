@@ -1,0 +1,5 @@
+node_modules/
+cleanup.js
+fetch_discord.js
+search_discord.js
+.env
